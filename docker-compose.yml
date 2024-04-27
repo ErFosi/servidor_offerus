@@ -7,7 +7,7 @@ services:
     env_file: 
       - credentials.env
     ports:
-      - "4500:5432"
+      - "4501:5432"
     volumes:
       - ./database/tables:/docker-entrypoint-initdb.d
 
