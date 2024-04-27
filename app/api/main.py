@@ -27,7 +27,7 @@ from apscheduler.triggers.cron import CronTrigger
 import random
 
 app = FastAPI()
-
+"""
 #Firebase
 credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 firebase_credentials = credentials.Certificate(credentials_path)
@@ -40,7 +40,7 @@ mensajes_notificaciones = [
     "Recuerda apuntar el tiempo invertido de tus tareas!",
     "Ten un buen día y distribuye bien el tiempo!"
 ]
-
+"""
 lista_categorias=["gratis","deporte","entretenimiento","academico","hogar","online","otros"]
 # Función para enviar mensaje aleatorio
 def enviar_mensaje_aleatorio():
@@ -57,7 +57,7 @@ def enviar_mensaje_aleatorio():
         print(f"Mensaje enviado: {response}")
     except Exception as e:
         print(f"Error enviando mensaje: {str(e)}")
-
+"""
 scheduler = AsyncIOScheduler()
 scheduler.add_job(
     enviar_mensaje_aleatorio,
@@ -66,7 +66,7 @@ scheduler.add_job(
 )
 print("------------------AUTO NOTIFICATIONS ON-------------------")
 scheduler.start()
-
+"""
 
 
 
