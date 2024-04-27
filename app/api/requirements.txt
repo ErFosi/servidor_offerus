@@ -1,0 +1,16 @@
+pydantic
+uvicorn
+fastapi
+sqlalchemy
+bcrypt
+python-multipart
+firebase-admin
+Unidecode
+psycopg2
+passlib[bcrypt]
+python-jose[cryptography]
+firebase-admin==6.5.0
+google-auth
+apscheduler
+pydantic[email]
+geoalchemy2
