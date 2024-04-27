@@ -19,7 +19,7 @@ services:
       - ./app:/code
       - /etc/letsencrypt:/etc/letsencrypt
     ports:
-      - "8000:8000"
+      - "8001:8000"
     depends_on:
       - db
     env_file: 
