@@ -26,5 +26,5 @@ services:
       - credentials.env
     command: >
       uvicorn api.main:app --host 0.0.0.0 --port 443
-      --ssl-keyfile /etc/letsencrypt/live/tu-dominio.com/privkey.pem
-      --ssl-certfile /etc/letsencrypt/live/tu-dominio.com/fullchain.pem
+      --ssl-keyfile /etc/letsencrypt/live/offerus.ddns.net/privkey.pem
+      --ssl-certfile /etc/letsencrypt/live/offerus.ddns.net/fullchain.pem
