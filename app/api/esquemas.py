@@ -1,7 +1,8 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Literal
 from datetime import date
 from pydantic import BaseModel, EmailStr, constr, validator
+
 
 lista_categorias=["gratis","deporte","entretenimiento","academico","hogar","online","otros"]
 
@@ -109,6 +110,7 @@ class BusquedaPeticionServicio(BaseModel):
     precio_maximo: Optional[float] = None
     latitud: Optional[float] = None
     longitud: Optional[float] = None
+    ordenar_por: Optional[Literal['precio_asc', 'precio_desc', 'distancia']] = None
     @validator('categorias')
     def validate_categoria(cls, v):
         categories = [category.strip() for category in v.split(',')]
@@ -116,10 +118,20 @@ class BusquedaPeticionServicio(BaseModel):
             raise ValueError("Categorías no válidas")
         return v
 
-# Esquema para crear un acuerdo/deal
+
 class DealCreate(BaseModel):
     id_peticion: int
     
+class DealResponse(BaseModel):
+    id: int
+    nota: str
+    username_cliente: str
+    username_host: str
+    id_peticion: int
+    aceptado: bool
+
+    class Config:
+        from_attributes = True
 
 class PeticionServicioResponse(BaseModel):
     id: int
@@ -127,10 +139,10 @@ class PeticionServicioResponse(BaseModel):
     titulo: str
     descripcion: str
     precio: float
-    fecha: date  # Asumiendo que la fecha es una cadena para simplificar
+    fecha: date  
     latitud: Optional[float] = None
     longitud: Optional[float] = None
     categorias: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True

@@ -145,6 +145,12 @@ def get_peticion( id_pet: int, db: Session = Depends(get_db)):
 def buscar_peticiones_servicio(busqueda: BusquedaPeticionServicio, db: Session = Depends(get_db)):
     result = crud.buscar_peticiones_servicio(db, busqueda)
     return result
+
+@app.get("/usuarios/mis_deals", response_model=List[DealResponse], tags=["Deals"])
+def read_user_deals(db: Session = Depends(get_db), current_user: Usuario = Depends(obtener_usuario_actual)):
+    deals = crud.get_user_deals(db, username=current_user.username)
+    return deals
+
 ###----------------------Oauth------------------------###
 
 #Esta ruta sirve para obtener el token de acceso

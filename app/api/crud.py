@@ -6,6 +6,7 @@ from fastapi import HTTPException
 import random
 from sqlalchemy import func
 import math
+from sqlalchemy import or_
 
 """ 
     Ajusta la ubicación original en una distancia aleatoria
@@ -236,34 +237,41 @@ def get_user_peticiones_servicio(db: Session, username: str):
 
 
 
+"""
+Metodo para obtener todas las peticiones/ervicio de una busqueda
 
+@params db: Session de la base de datos
+@params params: Modelo de busqueda de peticiones servicio
+
+@return: Lista de peticiones de servicio
+"""
 def buscar_peticiones_servicio(db: Session, params: esquemas.BusquedaPeticionServicio):
-    # Comenzar con una consulta base
     query = db.query(databaseORM.PeticionServicio)
-    
-    
+
     if params.texto_busqueda:
         search_pattern = f'%{params.texto_busqueda}%'
         query = query.filter(databaseORM.PeticionServicio.descripcion.ilike(search_pattern))
-        
+    
     if params.categorias:
         categorias_list = [cat.strip() for cat in params.categorias.split(',')]
         query = query.filter(databaseORM.PeticionServicio.categorias.in_(categorias_list))
-    
-    
+
     if params.precio_minimo is not None:
         query = query.filter(databaseORM.PeticionServicio.precio >= params.precio_minimo)
     if params.precio_maximo is not None:
         query = query.filter(databaseORM.PeticionServicio.precio <= params.precio_maximo)
     if params.latitud and params.longitud and params.distancia_maxima:
-        # Convertir la latitud y longitud en un punto geográfico
         user_location = func.ST_MakePoint(params.longitud, params.latitud, type_=databaseORM.PeticionServicio.location)
-        # Filtrar peticiones dentro del radio de distancia máxima (en metros)
-        query = query.filter(
-            func.ST_Distance(databaseORM.PeticionServicio.location, user_location) <= params.distancia_maxima
-        )
-    
-    # Esto es más complejo y puede requerir cálculos geoespaciales, posiblemente con funcionalidad adicional en la base de datos o en Python
+        query = query.filter(func.ST_Distance(databaseORM.PeticionServicio.location, user_location) <= params.distancia_maxima)
+
+    # Aplicar ordenaciones según el parámetro 'ordenar_por'
+    if params.ordenar_por == 'precio_asc':
+        query = query.order_by(databaseORM.PeticionServicio.precio.asc())
+    elif params.ordenar_por == 'precio_desc':
+        query = query.order_by(databaseORM.PeticionServicio.precio.desc())
+    elif params.ordenar_por == 'distancia' and params.latitud and params.longitud:
+        user_location = func.ST_MakePoint(params.longitud, params.latitud, type_=databaseORM.PeticionServicio.location)
+        query = query.order_by(func.ST_Distance(databaseORM.PeticionServicio.location, user_location).asc())
 
     return query.limit(200).all()
 
@@ -332,3 +340,19 @@ def accept_deal(db: Session, deal_id: int, username_host: str):
     db.commit()
     return deal
 
+
+"""
+Metodo para obtener los deals de un usuario
+
+@params db: Session de la base de datos
+
+@return: Lista de deals
+"""
+def get_user_deals(db: Session, username: str):
+    user_deals = db.query(databaseORM.Deal).filter(
+        or_(
+            databaseORM.Deal.username_cliente == username,
+            databaseORM.Deal.username_host == username
+        )
+    ).all()
+    return user_deals
