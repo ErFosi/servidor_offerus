@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   db:
@@ -10,7 +9,7 @@ services:
       - "4500:5432"
     volumes:
       - ./database/tables:/docker-entrypoint-initdb.d
-
+      - ./database/data:/var/lib/postgresql/data
   fastapi_api_offerus:
     build:
       context: ./app/.

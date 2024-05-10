@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional, Literal
 from datetime import date
-from pydantic import BaseModel, EmailStr, constr, validator
+from pydantic import BaseModel, EmailStr, constr, validator, conint
 
 
 lista_categorias=["gratis","deporte","entretenimiento","academico","hogar","online","otros"]
@@ -17,7 +17,7 @@ class UsuarioCreate(BaseModel):
     latitud: float
     longitud: float
     mail: EmailStr
-    telefono: constr(min_length=9, max_length=9)
+    telefono: constr(pattern=r"^\d{9}$")
     sexo: constr(max_length=1)
     descripcion: str
     suscripciones: str
@@ -42,6 +42,30 @@ class UsuarioDetails(UsuarioBase):
     class Config:
         from_attributes = True
 
+class UsuarioUpdate(BaseModel):
+    nombre_apellido: Optional[constr(min_length=1, max_length=100)] = None
+    edad: Optional[int] = None
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
+    mail: Optional[EmailStr] = None
+    telefono: Optional[constr(pattern=r"^\d{9}$")] = None
+    sexo: Optional[constr(max_length=1)] = None
+    descripcion: Optional[str] = None
+    suscripciones: Optional[str] = None
+
+    @validator('sexo')
+    def validate_sexo(cls, v):
+        if v and v not in ('M', 'F', 'O'):
+            raise ValueError('Invalid sexo value')
+        return v.upper()
+    
+    class Config:
+        from_attributes = True
+
+class UsuarioModContraseña(BaseModel):
+    contraseña: constr(min_length=6, max_length=100)
+    nueva_contraseña: constr(min_length=6, max_length=100)
+    
 class AuthForm(BaseModel):
     username: str
     password: str
@@ -75,6 +99,7 @@ class FirebaseClientToken(BaseModel):
 class PeticionServicioCreate(BaseModel):
     titulo: str
     descripcion: str
+    peticion: bool
     precio: float
     fecha: Optional[date] = date.today()  
     latitud: float
@@ -92,6 +117,7 @@ class PeticionServicioDetails(BaseModel):
     id: int
     username: str
     titulo: str
+    peticion: bool
     descripcion: str
     precio: float
     fecha: date
@@ -101,6 +127,27 @@ class PeticionServicioDetails(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PeticionServicioUpdate(BaseModel):
+    id: int
+    titulo: Optional[str]
+    descripcion: Optional[str] 
+    peticion: Optional[bool] 
+    precio: Optional[float] 
+    fecha: Optional[date] 
+    latitud: Optional[float] 
+    longitud: Optional[float]
+    categorias: Optional[str]
+
+    @validator('categorias', pre=True, always=True)
+    def split_and_validate_categories(cls, v):
+        if v is not None:
+            categories = [category.strip() for category in v.split(',')]
+            if not all(category in lista_categorias for category in categories):
+                raise ValueError("Una o más categorías no son válidas")
+            return ','.join(categories)
+        return v
+
 
 class BusquedaPeticionServicio(BaseModel):
     texto_busqueda: Optional[str] = None
@@ -119,24 +166,47 @@ class BusquedaPeticionServicio(BaseModel):
         return v
 
 
+class PeticionesRequest(BaseModel):
+    ids_pet: List[int]
+    
 class DealCreate(BaseModel):
     id_peticion: int
     
+class DealAction(BaseModel):
+    deal_id: int
+    accept: bool  
+
+class RateDeal(BaseModel):
+    deal_id: int
+    nota: conint(ge=0, le=5)  # Asegura que la nota sea un entero mayor que 0
+
+    @validator('nota')
+    def check_nota(cls, value):
+        if value == -1:
+            raise ValueError("La nota no puede ser -1")
+        return value
 class DealResponse(BaseModel):
     id: int
-    nota: str
+    nota_cliente: conint(ge=-1)  
+    nota_host: conint(ge=-1)   
     username_cliente: str
     username_host: str
     id_peticion: int
-    aceptado: bool
+    estado: str
+
+    @validator('estado')
+    def check_estado(cls, v):
+        assert v in ['pendiente', 'aceptado', 'rechazado'], 'estado debe ser pendiente, aceptado o rechazado'
+        return v
 
     class Config:
-        from_attributes = True
+        from_attributes = True 
 
 class PeticionServicioResponse(BaseModel):
     id: int
     username: str
     titulo: str
+    peticion:bool
     descripcion: str
     precio: float
     fecha: date  
@@ -146,3 +216,6 @@ class PeticionServicioResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class FavCreate(BaseModel):
+    id_peticion: int

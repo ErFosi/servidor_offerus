@@ -43,12 +43,25 @@ class PeticionServicio(Base):
 
 class Deal(Base):
     __tablename__ = 'deal'
-    id = Column(Integer, primary_key=True, index=True)
-    nota = Column(Text)
+    id = Column(Integer, primary_key=True)
     username_cliente = Column(String(50), ForeignKey('usuarios.username'))
     username_host = Column(String(50), ForeignKey('usuarios.username'))
     id_peticion = Column(Integer, ForeignKey('peticion_servicio.id'))
-    aceptado = Column(Boolean)
+    estado = Column(String(10), default='pendiente')
+    nota_cliente = Column(Integer, default=-1)
+    nota_host = Column(Integer, default=-1)
+
+    # Relaciones
     cliente = relationship("Usuario", foreign_keys=[username_cliente])
     host = relationship("Usuario", foreign_keys=[username_host])
+    peticion_servicio = relationship("PeticionServicio")
+
+class Favoritos(Base):
+    __tablename__ = 'favoritos'
+    
+    username = Column(String(50), ForeignKey('usuarios.username', ondelete='CASCADE'), primary_key=True)
+    id_peticion = Column(Integer, ForeignKey('peticion_servicio.id', ondelete='CASCADE'), primary_key=True)
+
+    # Relaciones (opcional si necesitas acceder a los objetos relacionados desde un objeto Like)
+    usuario = relationship("Usuario")
     peticion_servicio = relationship("PeticionServicio")
