@@ -19,7 +19,7 @@ class UsuarioCreate(BaseModel):
     mail: EmailStr
     telefono: constr(pattern=r"^\d{9}$")
     sexo: constr(max_length=1)
-    descripcion: str
+    descripcion: constr(max_length=400)
     suscripciones: str
 
     @validator('sexo')
@@ -50,7 +50,7 @@ class UsuarioUpdate(BaseModel):
     mail: Optional[EmailStr] = None
     telefono: Optional[constr(pattern=r"^\d{9}$")] = None
     sexo: Optional[constr(max_length=1)] = None
-    descripcion: Optional[str] = None
+    descripcion: Optional[constr(max_length=400)] = None
     suscripciones: Optional[str] = None
 
     @validator('sexo')
@@ -160,6 +160,8 @@ class BusquedaPeticionServicio(BaseModel):
     ordenar_por: Optional[Literal['precio_asc', 'precio_desc', 'distancia']] = None
     @validator('categorias')
     def validate_categoria(cls, v):
+        if v is None or v.strip() == "":
+            return v
         categories = [category.strip() for category in v.split(',')]
         if not all(category in lista_categorias for category in categories):
             raise ValueError("Categorías no válidas")

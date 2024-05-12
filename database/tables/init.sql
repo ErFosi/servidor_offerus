@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     mail VARCHAR(100),
     telefono VARCHAR(20),
     sexo CHAR(1), -- Considera usar 'M', 'F', 'O' (Otro)
-    descripcion TEXT,
+    descripcion VARCHAR(400),
     suscripciones VARCHAR(100)
 );
 
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS deal (
     id SERIAL PRIMARY KEY,
     username_cliente VARCHAR(50) REFERENCES usuarios(username),
     username_host VARCHAR(50) REFERENCES usuarios(username),
-    id_peticion INT REFERENCES peticion_servicio(id),
+    id_peticion INT REFERENCES peticion_servicio(id) ON DELETE CASCADE,
     estado VARCHAR(10) DEFAULT 'pendiente', -- Puede ser 'aceptado', 'rechazado', o 'pendiente'
     nota_cliente INT DEFAULT -1, -- Nota asignada al cliente, -1 como valor por defecto indicando no evaluado
     nota_host INT DEFAULT -1 -- Nota asignada al host, -1 como valor por defecto indicando no evaluado

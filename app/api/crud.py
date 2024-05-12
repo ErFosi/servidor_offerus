@@ -194,7 +194,7 @@ def modificar_contraseña(db: Session, username: str, user: esquemas.UsuarioModC
     
     # Verificar que la contraseña actual es correcta
     if not verify_password(user.contraseña, db_user.contraseña):
-        raise HTTPException(status_code=400, detail="Contraseña incorrecta")
+        raise HTTPException(status_code=417, detail="Contraseña incorrecta")
     
     # Hash de la nueva contraseña y actualización
     db_user.contraseña = hash_password(user.nueva_contraseña)
@@ -524,6 +524,16 @@ def rate_deal(db: Session, deal_id: int, username: str, nota: int):
     db.commit()
     return deal
 
+"""
+Metodo para obtener un deal a partir del id
+
+@params db: Session de la base de datos
+@params id: id del dea
+
+
+"""
+def get_deal(db: Session, id: int):
+    return db.query(databaseORM.Deal).filter(databaseORM.Deal.id == id).first()
 """
 Metodo para dar fav a una petición
 

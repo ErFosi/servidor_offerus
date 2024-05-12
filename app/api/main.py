@@ -226,11 +226,11 @@ def accept_deny_deal(action: DealAction, db: Session = Depends(get_db), current_
     
     # Enviar notificación al cliente del deal
     deal_info = crud.get_deal(db, id=action.deal_id)
-    cliente_deal = crud.get_usuario_by_username(db, deal_info.username_cliente)
-    
+    cliente_deal = crud.get_usuario(db, deal_info.username_cliente)
+    peticion= crud.get_peticion(db, id=deal_info.id_peticion)
     accion = "aceptado" if action.accept else "rechazado"
     titulo = "Tu deal ha sido " + accion
-    cuerpo = f"Tu deal en la petición '{deal_info.peticion.titulo}' ha sido {accion}."
+    cuerpo = f"Tu deal en la petición '{peticion.titulo}' ha sido {accion}."
     enviar_mensaje_fcm(cliente_deal.username, titulo, cuerpo)
     
     return updated_deal
@@ -338,6 +338,8 @@ async def upload_user_profile_image(file: UploadFile, usuario_actual: Usuario = 
     return {"filename": file_name}
 
 ###----------------------Firebase------------------------### (aun no terminado)
+
+topics=["deportes","academico","hogar","gratis","online","entretenimiento","otros"]
 @app.post("/suscribir_fcm", tags=["FCM"])
 async def suscribir_fcm(token: FirebaseClientToken, db: Session = Depends(get_db), current_user: Usuario = Depends(obtener_usuario_actual)):
     # Obtener el usuario
@@ -346,11 +348,13 @@ async def suscribir_fcm(token: FirebaseClientToken, db: Session = Depends(get_db
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
     # Desuscribir el token FCM de todos los temas
-    try:
-        response = messaging.unsubscribe_from_topic(token.fcm_client_token, messaging.ALL_TOPICS)
-        print(f"Desuscrito de todos los temas: {response}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al desuscribir de todos los temas: {str(e)}")
+    
+    for topic in topics:
+        try:
+            response = messaging.unsubscribe_from_topic([token.fcm_client_token], topic)
+            print(f"Desuscripción de {topic}: {response}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error al desuscribir de {topic}: {str(e)}")
     
     # Suscribir el token FCM al tema del usuario
     user_topic = f"user_{current_user.username}"
@@ -361,16 +365,20 @@ async def suscribir_fcm(token: FirebaseClientToken, db: Session = Depends(get_db
         raise HTTPException(status_code=500, detail=f"Error al suscribir al tema del usuario: {str(e)}")
     
     # También suscribir a categorías, si es necesario
-    categorias = usuario.suscripciones.split(',')
-    for categoria in categorias:
-        try:
-            response_categoria = messaging.subscribe_to_topic([token.fcm_client_token], categoria.strip())
-            print(f"Suscrito a {categoria}: {response_categoria}")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error al suscribir a la categoría {categoria}: {str(e)}")
+    categorias = usuario.suscripciones
+    if categorias != "":
+        categorias_sep= categorias.split(",")
+   
+        for categoria in categorias_sep:
+            try:
+                response_categoria = messaging.subscribe_to_topic([token.fcm_client_token], categoria.strip())
+                print(f"Suscrito a {categoria}: {response_categoria}")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Error al suscribir a la categoría {categoria}: {str(e)}")
 
-    return {"message": "Suscripción a FCM realizada con éxito para el usuario y sus categorías indicadas"}
-    
+        return {"message": "Suscripción a FCM realizada con éxito para el usuario y sus categorías indicadas"}
+    else:
+        print("No se han indicado categorías")
     
 
 
