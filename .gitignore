@@ -1,2 +1,4 @@
 ./app/service-account-file.json
-./app/images/*
+app/images/*
+app/service-account-file.json
+app/service-account-file.json
