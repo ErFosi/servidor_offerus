@@ -110,10 +110,17 @@ def get_db():
 #Esta ruta sirve para
 @app.post("/usuarios", status_code=status.HTTP_200_OK, tags=["Usuarios"])
 def crear_usuarios(user: UsuarioCreate, db: Session = Depends(get_db)):
-    db_user = crud.get_usuario(db, username=user.username)
+    # Eliminar espacios en blanco al principio y al final del nombre de usuario
+    username = user.username.rstrip()
+    
+    db_user = crud.get_usuario(db, username=username)
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
+    
+    # Crear el usuario con el nombre de usuario limpio
+    user.username = username
     crud.create_user(db=db, user=user)
+    
     return JSONResponse(content={"message": "User created successfully"}, status_code=status.HTTP_200_OK)
 
 
@@ -274,9 +281,12 @@ def get_nota_usuario(username:str, db: Session = Depends(get_db)):
 ###----------------------Oauth------------------------###
 
 #Esta ruta sirve para obtener el token de acceso
-@app.post("/token",tags=["Oauth"], response_model=TokenConUsuario)
+@app.post("/token", tags=["Oauth"], response_model=TokenConUsuario)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    usuario = crud.authenticate_user(db, form_data.username, form_data.password)
+    # Eliminar espacios en blanco al final del nombre de usuario
+    username = form_data.username.rstrip()
+    
+    usuario = crud.authenticate_user(db, username, form_data.password)
     if not usuario:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -287,13 +297,13 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     # Generar el token de acceso
     access_token_expires = timedelta(minutes=300000)  # O el tiempo que consideres adecuado
     access_token = crear_token_acceso(
-        data={"sub":str(usuario.username)}
+        data={"sub": str(usuario.username)}
     )
 
     # Generar el refresh token
     refresh_token_expires = timedelta(days=90)  # Los refresh tokens suelen tener una mayor duración
     refresh_token = crear_token_acceso(  # Suponiendo que reutilizas la misma función con un parámetro adicional
-        data={"sub": str(usuario.username),"refresh":True}
+        data={"sub": str(usuario.username), "refresh": True}
     )
 
     return {
