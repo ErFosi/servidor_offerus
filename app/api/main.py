@@ -24,9 +24,17 @@ from os import environ
 from google.oauth2 import service_account
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+import requests
 import random
+import io
+from unidecode import unidecode
+from geopy.geocoders import Nominatim
+from nltk.corpus import stopwords
 
 app = FastAPI()
+geolocator = Nominatim(user_agent="offerus")
+
+
 
 #Firebase
 credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
@@ -34,6 +42,7 @@ firebase_credentials = credentials.Certificate(credentials_path)
 firebase_admin.initialize_app(firebase_credentials)
 
 def enviar_mensaje_fcm(tema: str, titulo: str, cuerpo: str):
+    print("Se envia mensaje a tema: ",tema)
     # Crear un mensaje de notificación
     message = messaging.Message(
         notification=messaging.Notification(
@@ -148,10 +157,16 @@ def add_peticion_servicio(peticion: PeticionServicioCreate, db: Session = Depend
     try:
         pet_Creada= crud.create_peticion_servicio(db=db, peticion=peticion, username=current_user.username)
         categorias = [categoria.strip() for categoria in peticion.categorias.split(',')]
+        provincia=getProvincia(current_user.latitud,current_user.longitud)
+        print(provincia)
         for categoria in categorias:
             titulo = "Nueva petición de servicio en tu categoría"
             cuerpo = f"{peticion.titulo} - {peticion.descripcion[:50]}..."  # Resumen de la descripción
-            enviar_mensaje_fcm(categoria, titulo, cuerpo)
+            
+            if categoria!="online":
+                enviar_mensaje_fcm(f"{categoria}_{provincia}", titulo, cuerpo)
+            else:
+                enviar_mensaje_fcm(categoria, titulo, cuerpo)
         return pet_Creada
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -215,7 +230,7 @@ def create_deal(deal: DealCreate, db: Session = Depends(get_db), current_user: U
     
     titulo = "Nuevo deal en tu petición"
     cuerpo = f"{current_user.username} ha realizado un deal en tu petición: {peticion.titulo}"
-    enviar_mensaje_fcm(creador_peticion.username, titulo, cuerpo)
+    enviar_mensaje_fcm(unidecode(f"user_{creador_peticion.username}"), titulo, cuerpo)
     
     return created_deal
 
@@ -231,7 +246,8 @@ def accept_deny_deal(action: DealAction, db: Session = Depends(get_db), current_
     accion = "aceptado" if action.accept else "rechazado"
     titulo = "Tu deal ha sido " + accion
     cuerpo = f"Tu deal en la petición '{peticion.titulo}' ha sido {accion}."
-    enviar_mensaje_fcm(cliente_deal.username, titulo, cuerpo)
+    
+    enviar_mensaje_fcm(unidecode(f"user_{deal_info.username_cliente}"), titulo, cuerpo)
     
     return updated_deal
 
@@ -251,6 +267,10 @@ def read_user_deals(db: Session = Depends(get_db), current_user: Usuario = Depen
     deals = crud.get_user_deals(db, username=current_user.username)
     return deals
 
+@app.get("/usuario/nota", response_model=NotaResponse, tags=["Usuarios"])
+def get_nota_usuario(username:str, db: Session = Depends(get_db)):
+    nota, cant = crud.get_nota_usuario(db, username)
+    return NotaResponse(nota=nota, cant=cant)
 ###----------------------Oauth------------------------###
 
 #Esta ruta sirve para obtener el token de acceso
@@ -357,7 +377,7 @@ async def suscribir_fcm(token: FirebaseClientToken, db: Session = Depends(get_db
             raise HTTPException(status_code=500, detail=f"Error al desuscribir de {topic}: {str(e)}")
     
     # Suscribir el token FCM al tema del usuario
-    user_topic = f"user_{current_user.username}"
+    user_topic = unidecode(f"user_{current_user.username}")
     try:
         response_user_topic = messaging.subscribe_to_topic([token.fcm_client_token], user_topic)
         print(f"Suscrito al tema del usuario {user_topic}: {response_user_topic}")
@@ -366,15 +386,30 @@ async def suscribir_fcm(token: FirebaseClientToken, db: Session = Depends(get_db
     
     # También suscribir a categorías, si es necesario
     categorias = usuario.suscripciones
+    provincia=getProvincia(usuario.latitud,usuario.longitud)
+    
+ 
+# Display
+    print(provincia)
+    print(categorias)
     if categorias != "":
         categorias_sep= categorias.split(",")
    
         for categoria in categorias_sep:
-            try:
-                response_categoria = messaging.subscribe_to_topic([token.fcm_client_token], categoria.strip())
-                print(f"Suscrito a {categoria}: {response_categoria}")
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Error al suscribir a la categoría {categoria}: {str(e)}")
+            if categoria != "":
+                print(categoria.strip())
+                try:
+                    
+                    if categoria!="online":
+                        print(f"{categoria.strip()}_{provincia}")
+                        response_categoria2 = messaging.subscribe_to_topic([token.fcm_client_token], f"{categoria.strip()}_{provincia}")
+                        print(f"Suscrito a f'{categoria.strip()}_{provincia}': {response_categoria2}")
+                    else:
+                        response_categoria = messaging.subscribe_to_topic([token.fcm_client_token], categoria.strip())
+                        print(f"Suscrito a {categoria}: {response_categoria}")
+
+                except Exception as e:
+                    raise HTTPException(status_code=500, detail=f"Error al suscribir a la categoría {categoria}: {str(e)}")
 
         return {"message": "Suscripción a FCM realizada con éxito para el usuario y sus categorías indicadas"}
     else:
@@ -399,3 +434,13 @@ async def get_favoritos(db: Session = Depends(get_db), current_user: Usuario = D
 @app.delete("/favoritos", tags=["Favs"])
 async def unfav_peticion_servicio(favoritos: FavCreate, db: Session = Depends(get_db), current_user: Usuario = Depends(obtener_usuario_actual)):
     return crud.unfav_peticion_servicio(db, id_peticion=favoritos.id_peticion, username=current_user.username)
+
+
+
+def getProvincia(lat,long):
+    print("Obteniendo provincia a partir de coordenadas",lat,long)
+    location = geolocator.reverse(str(lat) + "," + str(long))
+    adress = location.raw["address"]
+    provincia=adress.get("state","")
+    provincia = unidecode(provincia.replace(" ", "").lower())
+    return provincia

@@ -11,6 +11,10 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from geoalchemy2 import Geography
 from geoalchemy2.functions import ST_DistanceSphere, ST_MakePoint
+import nltk
+from nltk.corpus import stopwords
+nltk.download('stopwords')
+stop_words_es = set(stopwords.words('spanish'))
 """ 
     Ajusta la ubicación original en una distancia aleatoria
 
@@ -73,7 +77,7 @@ Metodo para verificar la contraseña
 """
 def verify_password(plain_password, hashed_password):
     print("Verifying password:")
-    print("Plain:", plain_password)
+    print("Plain:", "*" * len(plain_password))
     print("Hashed:", hashed_password)
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -220,8 +224,8 @@ Metodo para crear una petición de servicio
 
 
 def create_peticion_servicio(db: Session, peticion: esquemas.PeticionServicioCreate, username: str):
-    
-    adjusted_lat, adjusted_lon = adjust_location(peticion.latitud, peticion.longitud)
+    db_user = db.query(databaseORM.Usuario).filter(databaseORM.Usuario.username == username).first()
+    adjusted_lat, adjusted_lon = adjust_location(db_user.latitud, db_user.longitud)
     
     db_peticion = databaseORM.PeticionServicio(
         username=username,
@@ -351,8 +355,21 @@ def buscar_peticiones_servicio(db: Session, params: esquemas.BusquedaPeticionSer
     query = db.query(databaseORM.PeticionServicio)
 
     if params.texto_busqueda:
-        search_pattern = f'%{params.texto_busqueda}%'
-        query = query.filter(databaseORM.PeticionServicio.descripcion.ilike(search_pattern))
+        search_terms = params.texto_busqueda.split()
+    
+        # Eliminar stopwords de la búsqueda
+        search_terms = [term for term in search_terms if term.lower() not in stop_words_es]
+        
+        search_conditions = []
+        for term in search_terms:
+            search_pattern = f'%{term}%'
+            search_conditions.append(
+                or_(
+                    databaseORM.PeticionServicio.titulo.ilike(search_pattern),
+                    databaseORM.PeticionServicio.descripcion.ilike(search_pattern)
+                )
+            )
+        query = query.filter(or_(*search_conditions))
     
     if params.categorias:
         categorias_list = [cat.strip() for cat in params.categorias.split(',')]
@@ -376,7 +393,7 @@ def buscar_peticiones_servicio(db: Session, params: esquemas.BusquedaPeticionSer
             ) <= params.distancia_maxima*1000
         )
 
-    print(query) 
+    #print(query) 
 
     # Aplicar ordenaciones según el parámetro 'ordenar_por'
     if params.ordenar_por == 'precio_asc':
@@ -591,3 +608,26 @@ def unfav_peticion_servicio(db: Session, username: str, id_peticion: int):
     db.delete(favorito)
     db.commit()
     return favorito
+
+def get_nota_usuario(db: Session, username: str):
+    deals = db.query(databaseORM.Deal).filter(
+        or_(
+            databaseORM.Deal.username_cliente == username,
+            databaseORM.Deal.username_host == username
+        )
+    ).all()
+    notas = []
+    cont=0
+    for deal in deals:
+        if deal.username_cliente == username:
+            if deal.nota_cliente != -1:
+                notas.append(deal.nota_cliente)
+                cont+=1
+            
+        else:
+            if deal.nota_host != -1:
+                notas.append(deal.nota_host)
+                cont+=1
+            
+    nota_promedio = sum(notas) / cont if notas else 0
+    return nota_promedio, cont

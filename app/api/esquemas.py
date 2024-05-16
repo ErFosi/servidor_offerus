@@ -180,7 +180,7 @@ class DealAction(BaseModel):
 
 class RateDeal(BaseModel):
     deal_id: int
-    nota: conint(ge=0, le=5)  # Asegura que la nota sea un entero mayor que 0
+    nota: conint(ge=0, le=5)  
 
     @validator('nota')
     def check_nota(cls, value):
@@ -203,6 +203,10 @@ class DealResponse(BaseModel):
 
     class Config:
         from_attributes = True 
+
+class NotaResponse(BaseModel):
+    nota: float
+    cant: int
 
 class PeticionServicioResponse(BaseModel):
     id: int
