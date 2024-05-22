@@ -374,6 +374,7 @@ topics=["deportes","academico","hogar","gratis","online","entretenimiento","otro
 async def suscribir_fcm(token: FirebaseClientToken, db: Session = Depends(get_db), current_user: Usuario = Depends(obtener_usuario_actual)):
     # Obtener el usuario
     usuario = crud.get_usuario(db, current_user.username)
+    provincia=getProvincia(usuario.latitud,usuario.longitud)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
@@ -381,8 +382,8 @@ async def suscribir_fcm(token: FirebaseClientToken, db: Session = Depends(get_db
     
     for topic in topics:
         try:
-            response = messaging.unsubscribe_from_topic([token.fcm_client_token], topic)
-            print(f"Desuscripción de {topic}: {response}")
+            response = messaging.unsubscribe_from_topic([token.fcm_client_token], f"{topic.strip()}_{provincia}")
+            print(f"Desuscripción de {topic.strip()}_{provincia}: {response}")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error al desuscribir de {topic}: {str(e)}")
     
@@ -450,7 +451,10 @@ async def unfav_peticion_servicio(favoritos: FavCreate, db: Session = Depends(ge
 def getProvincia(lat,long):
     print("Obteniendo provincia a partir de coordenadas",lat,long)
     location = geolocator.reverse(str(lat) + "," + str(long))
-    adress = location.raw["address"]
-    provincia=adress.get("state","")
-    provincia = unidecode(provincia.replace(" ", "").lower())
-    return provincia
+    try:
+        adress = location.raw["address"]
+        provincia=adress.get("state","")
+        provincia = unidecode(provincia.replace(" ", "").lower())
+        return provincia
+    except:
+        return ""

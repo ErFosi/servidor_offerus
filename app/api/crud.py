@@ -620,13 +620,13 @@ def get_nota_usuario(db: Session, username: str):
     cont=0
     for deal in deals:
         if deal.username_cliente == username:
-            if deal.nota_cliente != -1:
-                notas.append(deal.nota_cliente)
+            if deal.nota_host != -1:
+                notas.append(deal.nota_host)
                 cont+=1
             
         else:
-            if deal.nota_host != -1:
-                notas.append(deal.nota_host)
+            if deal.nota_cliente != -1:
+                notas.append(deal.nota_cliente)
                 cont+=1
             
     nota_promedio = sum(notas) / cont if notas else 0

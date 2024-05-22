@@ -89,7 +89,7 @@ INSERT INTO usuarios (
     descripcion,
     suscripciones
 ) VALUES (
-    'default_user',
+    'default',
     'pbkdf2-sha256$29000$AH6lAX6lAH6=$1mgDx5elxdXGdyiShvLjR5xha.ShUDGjDPPdcWR6Trg=', 
     'Usuario Predeterminado',
     NULL, -- Edad no especificada
